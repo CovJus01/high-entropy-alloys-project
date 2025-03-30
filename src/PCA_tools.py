@@ -3,41 +3,54 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-#Nipals PCA algorithm
+
 def nipalspca(x, A):
+    x = x.astype(float)  # Ensure input is float for numerical stability
 
-    #This will store the components in a list to be accessed through loop
-    components = [x] * (A +1)
+    # Store deflated matrices
+    components = [x.copy() for _ in range(A + 1)]
+
+    T = [None] * A  # Score matrix
+    P = [None] * A  # Loading matrix
+    R2_list = [None] * A  # Variance explained
+
     for i in range(A):
-
         step = 0
-        #Step 1 - Select arbitrary t column
-        t = components[i][:, 0]
-        while(1):
-            t_last = t
-            #Step 2.1 - Regress the columns onto t to get p
-            p = np.dot(1/np.dot(t.T, t),
-                       np.dot(t.T, components[i]))
 
-            #Step 2.2 - Normalize p to unit length
-            p = p/np.linalg.norm(p)
+        # Step 1: Initialize t as the column with max variance (ignoring NaNs)
+        max_var_col = np.nanargmax(np.nanvar(components[i], axis=0))
+        t = components[i][:, max_var_col].copy()
 
-            #Step 2.3 - Regress each row onto p.T  to get new t
-            t = np.dot(1/np.dot(p.T, p),
-                       np.dot(components[i], p))
+        while True:
+            t_last = t.copy()
 
-            step+= 1
-            delta_t = np.linalg.norm(t - t_last)
-            #Check for convergence
-            if(delta_t < 1e-8 or step > 500):
+            # Step 2.1: Compute loadings (p), ignoring NaNs
+            numerator = np.nansum(components[i] * t[:, np.newaxis], axis=0)
+            denominator = np.nansum(t ** 2)
+            p = numerator / denominator
+
+            # Step 2.2: Normalize p (ignoring NaNs)
+            p /= np.sqrt(np.nansum(p ** 2))
+
+            # Step 2.3: Compute new scores (t), ignoring NaNs
+            numerator = np.nansum(components[i] * p, axis=1)
+            denominator = np.nansum(p ** 2)
+            t = numerator / denominator
+
+            step += 1
+            T[i] = t
+            P[i] = p
+
+            # Convergence check
+            if np.linalg.norm(np.nan_to_num(t - t_last)) < 1e-8 or step > 500:
                 break
 
-        p = p.reshape((p.shape[0],1))
-        t = t.reshape((t.shape[0],1))
+        # Step 3: Deflate X while handling NaNs
+        t = t.reshape((-1, 1))
+        p = p.reshape((-1, 1))
+        components[i + 1] = components[i] - np.dot(np.nan_to_num(t), np.nan_to_num(p.T))
 
-        #Step 3 - Deflate X(a-1) to get X(a)
-        components[i+1] = components[i] - np.matmul(t, p.T)
+        # Compute R² for this component (ignoring NaNs)
+        R2_list[i] = 1 - (np.nanvar(components[i+1]) / np.nanvar(components[0]))
 
-
-    R_sqr = 1 - (np.var(components[A])/np.var(components[0]))
-    return t,p,R_sqr
+    return T, P, R2_list
