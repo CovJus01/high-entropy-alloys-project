@@ -1,67 +1,68 @@
 #k_means implementation
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import general_tools as tools
 
 
-def k_means(img, k, init_centroids, max_iter=10):
-   #KMeans loop
-  new_centroids = init_centroids
-  for i in range(max_iter):
-    centroids = new_centroids
-    #Assign Centroids
-    centroid_assignments = assign_centroid(img, centroids)
-    #Calculate new centroids
-    new_centroids = update_centroids(img, centroids, centroid_assignments, k)
+def k_means(X, k, max_iter=10):
 
-  #Round for RGB to int values
-  new_centroids = new_centroids.astype(int)
-  centroid_assignments = assign_centroid(img, new_centroids)
-  return new_centroids, centroid_assignments
+        #Initialize Centroids
+        new_centroids = init_centroids(X, k)
+
+        #KMeans loop
+        for i in range(max_iter):
+            centroids = new_centroids
+            #Assign Centroids
+            centroid_assignments = assign_centroid(X, centroids)
+            #Calculate new centroids
+            new_centroids = update_centroids(X, centroids, centroid_assignments, k)
+
+        centroid_assignments = assign_centroid(X, new_centroids)
+
+        return new_centroids, centroid_assignments
 
 
-def assign_centroid(img, centroids):
+def assign_centroid(X, centroids):
 
   #Setup assignment array
-  centroid_assignments = np.zeros(img.shape[0] * img.shape[1]*2)
-  centroid_assignments = centroid_assignments.reshape((img.shape[0],img.shape[1],2))
+  centroid_assignments = [None] * X.shape[0]
+  X_no_nan = np.nan_to_num(X, nan=0.0)
 
-  #Iterate over all the pixels
-  for i in range(img.shape[0]):
-    for j in range(img.shape[1]):
-
+  for i in range(X.shape[0]):
       #Loop over the centroids
       for x in range(len(centroids)):
 
         #Calculate the distance
-        distance = np.sum(np.linalg.norm(img[i, j] - centroids[x]))
+        distance = np.linalg.norm(X_no_nan[i] - centroids[x])
+
 
         #In the first pass populate the array
         if(x == 0):
-          centroid_assignments[i,j] = (x, distance)
+          centroid_assignments[i] = (x, distance)
 
         #Compare old distance with current and update if better
-        elif(distance < centroid_assignments[i,j][1]):
-          centroid_assignments[i,j] = (x, distance)
+        elif(distance < centroid_assignments[i][1]):
+          centroid_assignments[i] = (x, distance)
 
   return centroid_assignments
 
-def update_centroids(img, centroids, centroids_assignments, k):
+def update_centroids(X, centroids, centroids_assignments, k):
   #Setup new array
-  new_centroids = np.zeros(k*3)
-  new_centroids = new_centroids.reshape((k,3))
+  new_centroids = np.zeros((k,X.shape[1]))
 
   #Loop through centroids
   for k in range(k):
     count = 0
 
     #Loop through pixels
-    for i in range(img.shape[0]):
-      for j in range(img.shape[1]):
+    for i in range(X.shape[0]):
 
         #If the pixel is assigned to this centroid add to sum
-        if(centroids_assignments[i,j][0] == k):
-          new_centroids[k] += img[i,j]
+        if(centroids_assignments[i][0] == k):
+          new_centroids[k] += X[i]
           count += 1
 
-    #Get average R,G,B
     if(count != 0):
       new_centroids[k] = new_centroids[k] / count
     else:
@@ -69,21 +70,22 @@ def update_centroids(img, centroids, centroids_assignments, k):
 
   return new_centroids
 
-def init_centroids_rand(img, k):
-  #Get pixels for easy calculations
+def init_centroids(X,k):
 
-  pixels = img.shape[0] * img.shape[1]
+    #Randomly initialize centroids
+    centroids = np.random.rand(k, X.shape[1])
 
-  #Initialize the centroids randomly as long as they are unique
-  centroids = np.unique(img.reshape((-1, 3)), axis = 0)
-  np.random.shuffle(centroids)
-  centroids = centroids[:k]
-  return centroids
+    return centroids
 
-def init_centroids_rand_spread(img, k):
-  centroids = np.random.rand(k,3)
-  centroids = centroids * 255
-  centroids = centroids.astype(int)
-  return centroids
 
+dataset = pd.read_csv("../data/High_Entropy_Alloy_Parsed.csv")
+fig_path = "../figures/k_means/"
+
+X = dataset.drop(columns=["IDENTIFIER: Reference ID", "FORMULA","PROPERTY: Microstructure", "PROPERTY: Processing method", "PROPERTY: BCC/FCC/other", "PROPERTY: Type of test"])
+labels = list(X)
+X = X.to_numpy()
+X = tools.preprocess(X)
+
+# Run K-means
+centroids, assignments = k_means(X, 2)
 

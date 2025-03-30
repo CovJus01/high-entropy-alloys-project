@@ -43,7 +43,7 @@ def get_prediction(X_train, X, t_train, k):
 
 
 dataset = pd.read_csv("../data/High_Entropy_Alloy_Parsed.csv")
-fig_path = "../figures/PCA/"
+fig_path = "../figures/kNN/"
 
 # Setup X and t
 X = dataset.drop(columns=["PROPERTY: Calculated Young modulus (GPa)","IDENTIFIER: Reference ID", "FORMULA","PROPERTY: Microstructure", "PROPERTY: Processing method", "PROPERTY: BCC/FCC/other", "PROPERTY: Type of test"])
