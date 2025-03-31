@@ -50,7 +50,7 @@ def nipalspca(x, A):
         p = p.reshape((-1, 1))
         components[i + 1] = components[i] - np.dot(np.nan_to_num(t), np.nan_to_num(p.T))
 
-        # Compute R² for this component (ignoring NaNs)
+        # Compute R2 for this component (ignoring NaNs)
         R2_list[i] = 1 - (np.nanvar(components[i+1]) / np.nanvar(components[0]))
 
     return T, P, R2_list
