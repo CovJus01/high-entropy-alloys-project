@@ -21,12 +21,11 @@ X = tools.preprocess(X)
 T,P,R2_list = pca.nipalspca(X,10)
 
 #Create some score plots
-tools.score_plot(T[0], T[1], 5, 5, "t2 vs t1", f"{fig_path}T1vsT2.png")
-tools.score_plot(T[2], T[3], 5, 5, "t4 vs t3", f"{fig_path}T4vsT3.png")
-tools.score_plot(T[4], T[5], 5, 5, "t6 vs t5", f"{fig_path}T6vsT5.png")
+for i in range(9):
+    tools.score_plot(T[i], T[i+1], 5, 5, f"t{i+2} vs t{i+1}", f"{fig_path}t{i+2}vst{i+1}.png")
+    tools.loadings_plot(labels[:44], P[i][:44], f"P{i+1}", f"{fig_path}p{i+1}.png")
+    tools.loadings_plot(labels[44:], P[i][44:], f"P{i+1}", f"{fig_path}p{i+1}(2).png")
 
-tools.loadings_plot(labels[:44], P[0][:44], "P1", f"{fig_path}p1.png")
-tools.loadings_plot(labels[44:], P[0][44:], "P1", f"{fig_path}p1(2).png")
 for i in range(len(R2_list)):
     print(f"{i}: \t{R2_list[i]}")
 
