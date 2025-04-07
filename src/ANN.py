@@ -34,10 +34,15 @@ dataset = dataset.drop(columns = ["Type of test", "Ag"])
 # Y =  Formula + Processing steps etc
 X = dataset.iloc[:, 15:]
 Y = dataset.iloc[:, 4:15]
+y_labels = list(Y)
 
 # Convert from a pandas dataframe into numpy values
 X = tools.preprocess(X.to_numpy())
 Y = tools.preprocess(Y.to_numpy())
+np.random.seed(1234)
+indicies = np.random.permutation(len(X))
+X = X[indicies]
+Y = Y[indicies]
 features = X.shape[1]
 
 # Split the dataset into the Training, Val and Test sets
@@ -52,7 +57,8 @@ Y_test = Y[1400:]
 # Define a basic model
 model = tf.keras.Sequential([
     tf.keras.Input(shape = (features,),),
-    tf.keras.layers.Dense(50, activation="relu", kernel_initializer='he_normal'),
+    tf.keras.layers.Dense(50, activation="relu"),
+    tf.keras.layers.Dense(50, activation="relu"),
     tf.keras.layers.Dense(units = 11, activation="linear", kernel_initializer='he_normal')
 ])
 
@@ -65,7 +71,7 @@ model.compile(
 model.summary()
 
 
-Epochs = 50
+Epochs = 100
 # Train the model using X_train and Y_train
 history = model.fit(
     X_train,
@@ -75,12 +81,25 @@ history = model.fit(
     validation_data=(X_val, Y_val)
 )
 
-Y_test[np.isnan(Y_test)] = 0.0
-predictions = model.predict(X_test)
-for i in range(11):
-    plt.scatter(predictions[:, i], Y_test[:,i])
-    plt.show()
 
-plt.plot(range(Epochs),history.history["loss"], color = "b")
-plt.plot(range(Epochs),history.history["val_loss"], color = "g")
+# Test the model
+predictions = model.predict(X_test)
+
+# Plot the results
+fig, axs = plt.subplots(3,4, figsize = (14,9))
+fig.suptitle("True vs Predicted values")
+
+for i in range(11):
+    x,y = int(i/4),int(i%4)
+    pred = predictions[:, i]
+    true = Y_test[:, i]
+    axs[x,y].plot(pred[~np.isnan(true)], true[~np.isnan(true)], 'o')
+    axs[x,y].set_title(y_labels[i])
+
+
+plt.show()
+
+# Plot the errors
+plt.plot(range(Epochs),history.history["loss"], color = "b", label = "Training Loss")
+plt.plot(range(Epochs),history.history["val_loss"], color = "g", label = "Validation Loss")
 plt.show()

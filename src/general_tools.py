@@ -7,8 +7,8 @@ import pandas as pd
 # Centering and Scaling for a given dataset X
 def preprocess(X):
     #Normalize and Center the data
-    X_c  = X - np.mean(X, axis=0)
-    X_cs = X_c / np.std(X_c, axis = 0)
+    X_c  = X - np.nanmean(X, axis=0)
+    X_cs = X_c / np.nanstd(X_c, axis = 0)
 
     return X_cs
 
