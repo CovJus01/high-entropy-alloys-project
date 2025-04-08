@@ -5,6 +5,8 @@ import pandas as pd
 import math
 from kmodes.kprototypes import KPrototypes
 import general_tools as tools
+from sklearn.manifold import TSNE
+from sklearn.preprocessing import StandardScaler
 
 
 # Rewrite data paths, my own folder is acting weirdly. 
@@ -96,5 +98,35 @@ print(kproto.n_iter_)
 # i.e, their properties were tested to be  different enough that they appear in different clusters.
 # Exposes a huge vulnerability in the dataset, implies material scientists either made errors or made
 # heterogenous samples. 
-for s, c in zip(syms, clusters):
-    print(f"Symbol: {s}, cluster:{c}")
+# for s, c in zip(syms, clusters):
+#     print(f"Symbol: {s}, cluster:{c}")
+
+# Visualization Section
+
+dataset = dataset.drop(columns=["Type of test", "Ag"])
+
+# Extract features (everything from column 15 onwards)
+X = dataset.iloc[:, 4:].to_numpy()
+
+# Replace NaNs with column means (or choose a different strategy)
+col_means = np.nanmean(X, axis=0)
+inds = np.where(np.isnan(X))
+X[inds] = np.take(col_means, inds[1])
+
+# Standardize features
+X_scaled = StandardScaler().fit_transform(X)
+
+# Apply t-SNE
+tsne = TSNE(n_components=2, perplexity=30, random_state=42)
+X_embedded = tsne.fit_transform(X_scaled)
+
+# Plot
+plt.figure(figsize=(8, 6))
+plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=clusters, cmap="viridis", s=10, alpha=0.7) # Note that "c=" is a sequence of n numbers
+plt.title("t-SNE Embedding of HEA Dataset")                                                     # to be mapped using cmap. 
+plt.xlabel("t-SNE 1")                                                   
+plt.ylabel("t-SNE 2")
+plt.grid(True)
+plt.show()
+#link for how I did the mapping:
+# https://codesignal.com/learn/courses/k-means-clustering-decoded/lessons/visualizing-k-means-clustering-on-an-iris-dataset-with-matplotlib
