@@ -2,6 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import math
 from kmodes.kprototypes import KPrototypes
 import general_tools as tools
 
@@ -19,8 +20,8 @@ fig_path = "../figures/ANN/"
 # Y =  Formula + Processing steps etc
 Unused_cols = ["IDENTIFIER: Reference ID",
                "FORMULA",
-               #"Processing method",
-               # "Microstructure",
+               "Processing method",
+                "Microstructure",
                "Type of test",
                "Ag",
                "B2",
@@ -57,28 +58,29 @@ Y_cols = ["grain size",
              "Other"]
 # This is an identifier for the datapoints. Used later on.
 syms = np.genfromtxt("../high-entropy-alloys-project/data/High_Entropy_Alloy_Parsed.csv", dtype=str, delimiter=',')[:, 0]
+#Drops unused columns, and restricts data array to only columns with numerical values.
+X = dataset.drop(columns = Unused_cols)
+intermediate = dataset.to_numpy()
+X = tools.preprocess(X.to_numpy()) # Pre-process data.
 
-intermediate = dataset.drop(columns = Unused_cols)
-X = tools.preprocess(intermediate.to_numpy()[:, 2:]) # Pre-process data.
-"""
-Line gives the below error. 
-AttributeError: 'float' object has no attribute 'sqrt'
-
-The above exception was the direct cause of the following exception:
-"""
-X = np.concatenate((intermediate.to_numpy()[:, :1],X), axis=1) # Concantenate strings with pre-processed data. 
 # Replacing NaN with mean. Copied from https://stackoverflow.com/questions/18689235/numpy-array-replace-nan-values-with-average-of-columns
 #Obtain mean of columns as you need, nanmean is convenient. Should be restricted to only numerical columns.
-col_mean = np.nanmean(X[:,2:], axis=0)
+col_mean = np.nanmean(X, axis=0)
 
 #Find indices that you need to replace
-inds = np.where(np.isnan(X[:,2:]))
+inds = np.where(np.isnan(X))
 
 #Place column means in the indices. Align the arrays using take
-X[:,2:][inds] = np.take(col_mean, inds[1])
+X[inds] = np.take(col_mean, inds[1])
 
 
-# Drops unused columns, and restricts data array to only columns after ID.
+intermediate = intermediate.astype(str) # Turning intermediate to string
+
+ 
+X = np.concatenate((intermediate[:, 2:3],X), axis=1) # Concantenate columns with strings with pre-processed data. 
+                                                    # Columns 2 and 3 are the columns in the full csv with the desired categorical variable. 
+                                                    # Concantedned to the left. 
+
 
 kproto = KPrototypes(n_clusters=3, init='Cao', verbose=2)
 clusters = kproto.fit_predict(X, categorical=[0, 1]) # categorical =[0,1] describe which columns contain categorical variables. 
@@ -89,5 +91,10 @@ print(kproto.cluster_centroids_)
 print(kproto.cost_)
 print(kproto.n_iter_)
 
+
+# Uses ID values to show which samples correspond to which cluster. Some ID values belong to different clusters
+# i.e, their properties were tested to be  different enough that they appear in different clusters.
+# Exposes a huge vulnerability in the dataset, implies material scientists either made errors or made
+# heterogenous samples. 
 for s, c in zip(syms, clusters):
     print(f"Symbol: {s}, cluster:{c}")
