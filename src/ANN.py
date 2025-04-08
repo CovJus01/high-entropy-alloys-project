@@ -56,7 +56,6 @@ Y_cols = ["grain size",
              "Exp. Density",
              "Calculated Density",
              "HV",
-             "Test temperature",
              "YS",
              "UTS",
              "Elongation",
@@ -75,18 +74,26 @@ Y_cols = ["grain size",
 X = dataset.drop(columns = Y_cols+Unused_cols)
 Y = dataset[Y_cols]
 y_labels = list(Y)
-print(y_labels)
-print(len(y_labels))
-# Convert from a pandas dataframe into numpy values
+
+# Center and scale X, then apply a mask for NaNs and append to the feature list
 X = tools.preprocess(X.to_numpy())
-Y_reg = tools.preprocess(Y.iloc[:,:11].to_numpy())
-Y_cat = Y.iloc[:,11:].to_numpy()
+X_mask = np.ma.masked_invalid(X[:,0])
+X_mask = np.reshape(X_mask, (-1,1))
+X = np.hstack((X, X_mask.mask))
+X[np.isnan(X)] = 0
+
+# Center and scale continuous values, stack them beside the categorical ones
+Y_reg = tools.preprocess(Y.iloc[:,:10].to_numpy())
+Y_cat = Y.iloc[:,10:].to_numpy()
 Y = np.hstack((Y_reg,Y_cat))
 
+#Shuffle our data to get different representation in the sets
 np.random.seed(1234)
 indicies = np.random.permutation(len(X))
 X = X[indicies]
 Y = Y[indicies]
+
+#Get input and output widths
 features = X.shape[1]
 output_width = Y.shape[1]
 
@@ -103,21 +110,22 @@ Y_test = Y[1400:]
 # Define a basic model
 model = tf.keras.Sequential([
     tf.keras.Input(shape = (features,),),
-    tf.keras.layers.Dense(50, activation="relu"),
-    tf.keras.layers.Dense(50, activation="relu"),
+    tf.keras.layers.Dense(64, activation="relu"),
+    tf.keras.layers.Dense(64, activation="relu"),
+    tf.keras.layers.Dense(64, activation="relu"),
     tf.keras.layers.Dense(units = output_width, activation="linear", kernel_initializer='he_normal')
 ])
 
 # Compile using MSE
 model.compile(
-    loss = lambda y_true, y_pred: masked_mse_and_CE_loss(y_true, y_pred, num_reg = 11) ,
+    loss = lambda y_true, y_pred: masked_mse_and_CE_loss(y_true, y_pred, num_reg = 10),
     optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001)
 )
 
 model.summary()
 
 
-Epochs = 100
+Epochs = 500
 # Train the model using X_train and Y_train
 history = model.fit(
     X_train,
@@ -137,7 +145,7 @@ fig.suptitle("True vs Predicted values")
 fig.tight_layout()
 
 #Print regressive
-for i in range(11):
+for i in range(10):
     x,y = int(i/5),int(i%5)
     pred = predictions[:, i]
     true = Y_test[:, i]
@@ -145,7 +153,7 @@ for i in range(11):
     axs[x,y].set_title(y_labels[i])
 
 #Print categorical
-for i in range(11, 19):
+for i in range(10, 18):
     x,y = int(i/5),int(i%5)
     pred = predictions[:, i]
     pred = tf.keras.activations.sigmoid(pred) > 0.5
@@ -163,10 +171,12 @@ for i in range(11, 19):
     axs[x,y].bar(confusion_labels, confusion_list)
     axs[x,y].set_title(y_labels[i])
 
-
+fig.delaxes(axs[3][4])
 plt.show()
 
 # Plot the errors
 plt.plot(range(Epochs),history.history["loss"], color = "b", label = "Training Loss")
 plt.plot(range(Epochs),history.history["val_loss"], color = "g", label = "Validation Loss")
 plt.show()
+
+
