@@ -87,6 +87,8 @@ X = np.hstack((X, X_mask.mask))
 X[np.isnan(X)] = 0
 
 # Center and scale continuous values, stack them beside the categorical ones
+Y_mean = np.nanmean(Y.iloc[:,:10].to_numpy(), axis =0)
+Y_std = np.nanstd(Y.iloc[:,:10].to_numpy(), axis =0)
 Y_reg = tools.preprocess(Y.iloc[:,:10].to_numpy())
 Y_cat = Y.iloc[:,10:].to_numpy()
 Y = np.hstack((Y_reg,Y_cat))
@@ -166,7 +168,7 @@ for nodes in [2,4,8,16,32,64,512]:
         for i in range(10):
             x,y = int(i/5),int(i%5)
             pred = predictions[:, i]
-            true = Y_test[:, i]
+            true = Y_test[:, i] * Y_std[i] + Y_mean[i]
             axs[x,y].plot(pred[~np.isnan(true)], true[~np.isnan(true)], 'o')
             axs[x,y].set_title(y_labels[i])
 
