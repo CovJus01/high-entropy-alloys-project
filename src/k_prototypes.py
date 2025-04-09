@@ -9,14 +9,14 @@ from sklearn.manifold import TSNE
 from sklearn.preprocessing import StandardScaler
 
 
-# Rewrite data paths, my own folder is acting weirdly. 
+# Rewrite data paths, my own folder is acting weirdly.
 # One to one recreation of the example file in the library github here: https://github.com/nicodv/kmodes/blob/master/examples/stocks.py
-dataset = pd.read_csv("../high-entropy-alloys-project/data/High_Entropy_Alloy_Parsed.csv")
+dataset = pd.read_csv("../data/High_Entropy_Alloy_Parsed.csv")
 fig_path = "../figures/ANN/"
 
-#Below is copied straight from ANN.py. Only difference is that unused_cols include the one-hot encoded categorical variables. 
+#Below is copied straight from ANN.py. Only difference is that unused_cols include the one-hot encoded categorical variables.
 # X, the working array, should just be our desired categorical variables and numerical variables
-# Unused_cols really just drops every column that isnt the categorical variables or y variables; processing method and microstructure. 
+# Unused_cols really just drops every column that isnt the categorical variables or y variables; processing method and microstructure.
 # Select the columns to be our inputs and our outputs
 # X =  Different output properties
 # Y =  Formula + Processing steps etc
@@ -58,8 +58,9 @@ Y_cols = ["grain size",
              "L12",
              "Laves",
              "Other"]
+
 # This is an identifier for the datapoints. Used later on.
-syms = np.genfromtxt("../high-entropy-alloys-project/data/High_Entropy_Alloy_Parsed.csv", dtype=str, delimiter=',')[:, 0]
+syms = np.genfromtxt("../data/High_Entropy_Alloy_Parsed.csv", dtype=str, delimiter=',')[:, 0]
 #Drops unused columns, and restricts data array to only columns with numerical values.
 X = dataset.drop(columns = Unused_cols)
 intermediate = dataset.to_numpy()
@@ -78,55 +79,55 @@ X[inds] = np.take(col_mean, inds[1])
 
 intermediate = intermediate.astype(str) # Turning intermediate to string
 
- 
-X = np.concatenate((intermediate[:, 2:3],X), axis=1) # Concantenate columns with strings with pre-processed data. 
-                                                    # Columns 2 and 3 are the columns in the full csv with the desired categorical variable. 
-                                                    # Concantedned to the left. 
 
+X = np.concatenate((intermediate[:, 2:3],X), axis=1) # Concantenate columns with strings with pre-processed data.
+                                                    # Columns 2 and 3 are the columns in the full csv with the desired categorical variable.
+                                                    # Concantedned to the left.
 
-kproto = KPrototypes(n_clusters=3, init='Cao', verbose=2)
-clusters = kproto.fit_predict(X, categorical=[0, 1]) # categorical =[0,1] describe which columns contain categorical variables. 
+for N in range(1,10):
+    kproto = KPrototypes(n_clusters=N, init='Cao', verbose=2)
+    clusters = kproto.fit_predict(X, categorical=[0, 1]) # categorical =[0,1] describe which columns contain categorical variables.
 
 # Print cluster centroids of the trained model.
-print(kproto.cluster_centroids_)
+    print(kproto.cluster_centroids_)
 # Print training statistics
-print(kproto.cost_)
-print(kproto.n_iter_)
+    print(kproto.cost_)
+    print(kproto.n_iter_)
 
 
 # Uses ID values to show which samples correspond to which cluster. Some ID values belong to different clusters
 # i.e, their properties were tested to be  different enough that they appear in different clusters.
 # Exposes a huge vulnerability in the dataset, implies material scientists either made errors or made
-# heterogenous samples. 
+# heterogenous samples.
 # for s, c in zip(syms, clusters):
 #     print(f"Symbol: {s}, cluster:{c}")
 
 # Visualization Section
-
-dataset = dataset.drop(columns=["Type of test", "Ag"])
+    if(N ==1):
+        dataset = dataset.drop(columns=["Type of test", "Ag"])
 
 # Extract features (everything from column 15 onwards)
-X = dataset.iloc[:, 4:].to_numpy()
+    X_tsne = dataset.iloc[:, 4:].to_numpy()
 
 # Replace NaNs with column means (or choose a different strategy)
-col_means = np.nanmean(X, axis=0)
-inds = np.where(np.isnan(X))
-X[inds] = np.take(col_means, inds[1])
+    col_means = np.nanmean(X_tsne, axis=0)
+    inds = np.where(np.isnan(X_tsne))
+    X_tsne[inds] = np.take(col_means, inds[1])
 
 # Standardize features
-X_scaled = StandardScaler().fit_transform(X)
+    X_scaled = StandardScaler().fit_transform(X_tsne)
 
 # Apply t-SNE
-tsne = TSNE(n_components=2, perplexity=30, random_state=42)
-X_embedded = tsne.fit_transform(X_scaled)
+    tsne = TSNE(n_components=2, perplexity=30, random_state=42)
+    X_embedded = tsne.fit_transform(X_scaled)
 
 # Plot
-plt.figure(figsize=(8, 6))
-plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=clusters, cmap="viridis", s=10, alpha=0.7) # Note that "c=" is a sequence of n numbers
-plt.title("t-SNE Embedding of HEA Dataset")                                                     # to be mapped using cmap. 
-plt.xlabel("t-SNE 1")                                                   
-plt.ylabel("t-SNE 2")
-plt.grid(True)
-plt.show()
+    plt.figure(figsize=(8, 6))
+    plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=clusters, cmap="viridis", s=10, alpha=0.7) # Note that "c=" is a sequence of n numbers
+    plt.title("t-SNE Embedding of HEA Dataset")                                                     # to be mapped using cmap.
+    plt.xlabel("t-SNE 1")
+    plt.ylabel("t-SNE 2")
+    plt.grid(True)
+    plt.show()
 #link for how I did the mapping:
 # https://codesignal.com/learn/courses/k-means-clustering-decoded/lessons/visualizing-k-means-clustering-on-an-iris-dataset-with-matplotlib
