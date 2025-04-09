@@ -5,6 +5,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import pandas as pd
 import general_tools as tools
+from matplotlib.lines import Line2D
 
 # A function for a masked MSE
 def masked_mse_and_CE_loss(y_true, y_pred, num_reg):
@@ -36,7 +37,9 @@ def masked_mse_and_CE_loss(y_true, y_pred, num_reg):
     return reg_error + cat_error
 
 
+# ********************** The Script begins Here **********************
 
+# PREPROCESSING AND DATA HANDLING
 
 dataset = pd.read_csv("../data/High_Entropy_Alloy_Parsed.csv")
 fig_path = "../figures/ANN/"
@@ -45,6 +48,7 @@ fig_path = "../figures/ANN/"
 # Select the columns to be our inputs and our outputs
 # X =  Different output properties
 # Y =  Formula + Processing steps etc
+
 Unused_cols = ["IDENTIFIER: Reference ID",
                "FORMULA",
                "Microstructure",
@@ -107,76 +111,108 @@ X_test = X[1400:]
 Y_test = Y[1400:]
 
 
+
+# ANN SETUP AND TRAINING
+
+models = {}
+for nodes in [2,4,8,16,32,64,512]:
+    for layers in [1,2,4,8]:
+
 # Define a basic model
-model = tf.keras.Sequential([
-    tf.keras.Input(shape = (features,),),
-    tf.keras.layers.Dense(64, activation="relu"),
-    tf.keras.layers.Dense(64, activation="relu"),
-    tf.keras.layers.Dense(64, activation="relu"),
-    tf.keras.layers.Dense(units = output_width, activation="linear", kernel_initializer='he_normal')
-])
+        model = tf.keras.Sequential([
+            tf.keras.Input(shape = (features,),),
+        ])
 
-# Compile using MSE
-model.compile(
-    loss = lambda y_true, y_pred: masked_mse_and_CE_loss(y_true, y_pred, num_reg = 10),
-    optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001)
-)
+            #ADD Hidden Layers
+        for layer in range(layers):
+            model.add(tf.keras.layers.Dense(nodes, activation="relu"))
 
-model.summary()
+        #ADD Output Layer
+        model.add(tf.keras.layers.Dense(units = output_width, activation="linear", kernel_initializer='he_normal'))
 
 
-Epochs = 500
+# Compile using custom error
+        model.compile(
+            loss = lambda y_true, y_pred: masked_mse_and_CE_loss(y_true, y_pred, num_reg = 10),
+            optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001)
+        )
+
+        model.summary()
+
+        Epochs = 100
+        if(layers == 16):
+            Epochs =500
 # Train the model using X_train and Y_train
-history = model.fit(
-    X_train,
-    Y_train,
-    batch_size=64,
-    epochs=Epochs,
-    validation_data=(X_val, Y_val)
-)
+        history = model.fit(
+            X_train,
+            Y_train,
+            batch_size=64,
+            epochs=Epochs,
+            validation_data=(X_val, Y_val)
+        )
 
+
+# MODEL ANALYSIS AND TESTING
 
 # Test the model
-predictions = model.predict(X_test)
+        predictions = model.predict(X_test)
 
 # Plot the results
-fig, axs = plt.subplots(4,5, figsize = (14,9))
-fig.suptitle("True vs Predicted values")
-fig.tight_layout()
+        fig, axs = plt.subplots(4,5, figsize = (14,9))
+        fig.suptitle("True vs Predicted values")
+        fig.tight_layout()
 
-#Print regressive
-for i in range(10):
-    x,y = int(i/5),int(i%5)
-    pred = predictions[:, i]
-    true = Y_test[:, i]
-    axs[x,y].plot(pred[~np.isnan(true)], true[~np.isnan(true)], 'o')
-    axs[x,y].set_title(y_labels[i])
+#Plot regressive
+        for i in range(10):
+            x,y = int(i/5),int(i%5)
+            pred = predictions[:, i]
+            true = Y_test[:, i]
+            axs[x,y].plot(pred[~np.isnan(true)], true[~np.isnan(true)], 'o')
+            axs[x,y].set_title(y_labels[i])
 
-#Print categorical
-for i in range(10, 18):
-    x,y = int(i/5),int(i%5)
-    pred = predictions[:, i]
-    pred = tf.keras.activations.sigmoid(pred) > 0.5
-    true = Y_test[:, i]
+#Plot categorical
+        for i in range(10, 18):
+            x,y = int(i/5),int(i%5)
+            pred = predictions[:, i]
+            pred = tf.keras.activations.sigmoid(pred) > 0.5
+            true = Y_test[:, i]
 
-    pred = pred.numpy()
+            pred = pred.numpy()
 
-    # Calculate confusion matrix components
-    TP = ((pred == 1) & (true == 1)).sum()
-    TN = ((pred == 0) & (true == 0)).sum()
-    FP = ((pred == 1) & (true == 0)).sum()
-    FN = ((pred == 0) & (true == 1)).sum()
-    confusion_list = [TP, TN, FP, FN]
-    confusion_labels = ["TP", "TN", "FP", "FN"]
-    axs[x,y].bar(confusion_labels, confusion_list)
-    axs[x,y].set_title(y_labels[i])
+            # Calculate confusion matrix components
+            TP = ((pred == 1) & (true == 1)).sum()
+            TN = ((pred == 0) & (true == 0)).sum()
+            FP = ((pred == 1) & (true == 0)).sum()
+            FN = ((pred == 0) & (true == 1)).sum()
+            confusion_list = [TP, TN, FP, FN]
+            confusion_labels = ["TP", "TN", "FP", "FN"]
+            axs[x,y].bar(confusion_labels, confusion_list)
+            axs[x,y].set_title(y_labels[i])
 
-fig.delaxes(axs[3][4])
-plt.show()
-
+        fig.delaxes(axs[3][4])
+        fig.savefig(f"../figures/ANN/{nodes}n{layers}l_results.png")
+        plt.close(fig)
 # Plot the errors
-plt.plot(range(Epochs),history.history["loss"], color = "b", label = "Training Loss")
-plt.plot(range(Epochs),history.history["val_loss"], color = "g", label = "Validation Loss")
-plt.show()
+        plt.plot(range(Epochs),history.history["loss"], color = "b", label = "Training Loss")
+        plt.plot(range(Epochs),history.history["val_loss"], color = "g", label = "Validation Loss")
 
+        #Uncomment for Error charts
+        plt.close()
+        #plt.show()
+        models[f"{nodes}n{layers}l"] = {"num_nodes": nodes,
+                                        "num_layers": layers,
+                                        "train_error": history.history["loss"][-1],
+                                        "val_error": history.history["val_loss"][-1]}
+
+
+for model in models:
+    curr_mod = models[model]
+    plt.bar(f"{curr_mod['num_nodes']}n{curr_mod['num_layers']}l_t", curr_mod["train_error"], color= "blue")
+    plt.bar(f"{curr_mod['num_nodes']}n{curr_mod['num_layers']}l_v", curr_mod["val_error"], color= "red")
+
+plt.title("Model progression by Nodes and Depth")
+plt.legend([Line2D([0], [0], color="blue", lw=4),
+            Line2D([0], [0], color="red", lw=4)],["Training error", "Validation error"])
+plt.xticks(rotation = 45, ha ='right')
+plt.show()
 
