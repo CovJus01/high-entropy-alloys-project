@@ -5,6 +5,7 @@ import pandas as pd
 import math
 from kmodes.kprototypes import KPrototypes
 import general_tools as tools
+import PCA_tools as pca
 from sklearn.manifold import TSNE
 from sklearn.preprocessing import StandardScaler
 
@@ -59,12 +60,20 @@ Y_cols = ["grain size",
              "Laves",
              "Other"]
 
+X_pca = dataset.drop(columns=["IDENTIFIER: Reference ID",
+                          "FORMULA",
+                          "Microstructure",
+                          "Processing method",
+                          "Type of test"])
 # This is an identifier for the datapoints. Used later on.
 syms = np.genfromtxt("../data/High_Entropy_Alloy_Parsed.csv", dtype=str, delimiter=',')[:, 0]
 #Drops unused columns, and restricts data array to only columns with numerical values.
 X = dataset.drop(columns = Unused_cols)
 intermediate = dataset.to_numpy()
 X = tools.preprocess(X.to_numpy()) # Pre-process data.
+
+X_pca = X_pca.to_numpy()
+X_pca = tools.preprocess(X_pca)
 
 # Replacing NaN with mean. Copied from https://stackoverflow.com/questions/18689235/numpy-array-replace-nan-values-with-average-of-columns
 #Obtain mean of columns as you need, nanmean is convenient. Should be restricted to only numerical columns.
@@ -83,8 +92,11 @@ intermediate = intermediate.astype(str) # Turning intermediate to string
 X = np.concatenate((intermediate[:, 2:3],X), axis=1) # Concantenate columns with strings with pre-processed data.
                                                     # Columns 2 and 3 are the columns in the full csv with the desired categorical variable.
                                                     # Concantedned to the left.
+
+T,P,R2 = pca.nipalspca(X_pca,10)
 elbow_scores = {}
-for N in range(1,20):
+
+for N in range(2,25):
     kproto = KPrototypes(n_clusters=N, init='Cao', verbose=2)
     clusters = kproto.fit_predict(X, categorical=[0, 1]) # categorical =[0,1] describe which columns contain categorical variables.
     elbow_scores[N] = kproto.cost_
@@ -103,7 +115,7 @@ for N in range(1,20):
 #     print(f"Symbol: {s}, cluster:{c}")
 
 # Visualization Section
-    if(N ==1):
+    if(N ==2):
         dataset = dataset.drop(columns=["Type of test", "Ag"])
 
 # Extract features (everything from column 15 onwards)
@@ -129,8 +141,18 @@ for N in range(1,20):
     plt.ylabel("t-SNE 2")
     plt.grid(True)
     plt.show()
+
+    #Plot PCA
+    plt.scatter(T[0], T[1], c = clusters, cmap= "viridis", s = 10)
+    plt.title("t2 vs t1")
+    plt.show()
+    plt.scatter(T[2], T[4], c = clusters, cmap= "viridis", s = 10)
+    plt.title("t4 vs t3")
+    plt.show()
 #link for how I did the mapping:
 # https://codesignal.com/learn/courses/k-means-clustering-decoded/lessons/visualizing-k-means-clustering-on-an-iris-dataset-with-matplotlib
 
+
+#Plot Elbow plot
 plt.plot(elbow_scores.keys(), elbow_scores.values())
 plt.show()
