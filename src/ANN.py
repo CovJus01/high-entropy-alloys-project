@@ -1,5 +1,4 @@
 #Implementation of the ANN
-#NEEDS REVISION TO ACTUALLY WORK WITH A PROPER DATASET
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
