@@ -36,14 +36,12 @@ def loadings_score_plot(t1, t2, p1, p2,  labels, x_lim, y_lim, title, path):
     fig.savefig(path)
     plt.close(fig)
 
-def score_plot(t1, t2, x_lim, y_lim, title, path):
+def score_plot(t1, t2,x_lab,y_lab, title, path):
 
     #Scatter scores
     fig,ax = plt.subplots(nrows =1, ncols=1)
-    ax.set_xlim(-1*x_lim,x_lim)
-    ax.set_xlabel("t1")
-    ax.set_ylabel("t2")
-    ax.set_ylim(-1*y_lim,y_lim)
+    ax.set_xlabel(x_lab)
+    ax.set_ylabel(y_lab)
     ax.set_title(title)
     ax.scatter(t1,t2)
 

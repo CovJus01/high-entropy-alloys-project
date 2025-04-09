@@ -25,6 +25,7 @@ def nipalspca(x, A):
             t_last = t.copy()
 
             # Step 2.1: Compute loadings (p), ignoring NaNs
+
             numerator = np.nansum(components[i] * t[:, np.newaxis], axis=0)
             denominator = np.nansum(t ** 2)
             p = numerator / denominator
