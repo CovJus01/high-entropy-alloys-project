@@ -83,11 +83,11 @@ intermediate = intermediate.astype(str) # Turning intermediate to string
 X = np.concatenate((intermediate[:, 2:3],X), axis=1) # Concantenate columns with strings with pre-processed data.
                                                     # Columns 2 and 3 are the columns in the full csv with the desired categorical variable.
                                                     # Concantedned to the left.
-
-for N in range(1,10):
+elbow_scores = {}
+for N in range(1,20):
     kproto = KPrototypes(n_clusters=N, init='Cao', verbose=2)
     clusters = kproto.fit_predict(X, categorical=[0, 1]) # categorical =[0,1] describe which columns contain categorical variables.
-
+    elbow_scores[N] = kproto.cost_
 # Print cluster centroids of the trained model.
     print(kproto.cluster_centroids_)
 # Print training statistics
@@ -131,3 +131,6 @@ for N in range(1,10):
     plt.show()
 #link for how I did the mapping:
 # https://codesignal.com/learn/courses/k-means-clustering-decoded/lessons/visualizing-k-means-clustering-on-an-iris-dataset-with-matplotlib
+
+plt.plot(elbow_scores.keys(), elbow_scores.values())
+plt.show()
